@@ -271,7 +271,8 @@
         if (location.hash === '#recognize') switchTab('recognize');
 
         /* ══ CAPTURE ══ */
-        let captureStream = null, autoCaptureInterval = null, capCount = 0, autoCaptureRunning = false;
+        // autoCaptureRunning controls the recursive setTimeout loop
+        let captureStream = null, capCount = 0, autoCaptureRunning = false;
         const captureVideo = document.createElement('video');
         captureVideo.autoplay = true; captureVideo.playsInline = true; captureVideo.muted = true;
 
@@ -329,8 +330,22 @@
                     document.getElementById('capture-status').textContent = r.error;
                 }
             } catch (e) {
-                toast('Save failed: ' + (e.detail || ''), 'error');
+                // e.error comes from our API response body, e.detail from FastAPI validation
+                const msg = e.error || e.detail || (typeof e === 'string' ? e : 'Network error');
+                document.getElementById('capture-status').textContent = 'Error: ' + msg;
             }
+        }
+
+        // ── Recursive auto-capture: waits for each request before scheduling next ──
+        async function autoCaptureTick() {
+            if (!autoCaptureRunning) return; // stopped
+            await captureOne();
+            if (capCount >= 100) {
+                toggleAutoCapture(); // stop automatically at 100
+                return;
+            }
+            // Schedule next capture 800ms after this one completes (server-friendly)
+            if (autoCaptureRunning) setTimeout(autoCaptureTick, 800);
         }
 
         function toggleAutoCapture() {
@@ -339,13 +354,9 @@
                 autoCaptureRunning = true;
                 btn.textContent = '⏸ Stop Auto Capture';
                 btn.classList.replace('btn-success', 'btn-warning');
-                autoCaptureInterval = setInterval(async () => {
-                    await captureOne();
-                    if (capCount >= 100) toggleAutoCapture();
-                }, 400);
+                autoCaptureTick(); // kick off the first tick
             } else {
                 autoCaptureRunning = false;
-                clearInterval(autoCaptureInterval);
                 btn.textContent = '▶ Start Auto Capture';
                 btn.classList.replace('btn-warning', 'btn-success');
             }
@@ -371,7 +382,8 @@
                     toast('Training failed', 'error');
                 }
             } catch (e) {
-                toast('Error: ' + (e.detail || ''), 'error');
+                const msg = e.error || e.detail || (typeof e === 'string' ? e : 'Network/server error');
+                toast('Training error: ' + msg, 'error');
             } finally {
                 btn.disabled = false; btn.textContent = '🧠 Start Training';
             }
@@ -469,7 +481,8 @@
                     toast(r.message || r.error || 'Could not recognize face', 'error');
                 }
             } catch (e) {
-                toast('Error: ' + (e.detail || ''), 'error');
+                const msg = e.error || e.detail || (typeof e === 'string' ? e : 'Network/server error');
+                toast('Recognition error: ' + msg, 'error');
             } finally {
                 btn.disabled = false; btn.textContent = '🔍 Recognize Face';
             }
