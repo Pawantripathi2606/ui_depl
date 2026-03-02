@@ -343,8 +343,8 @@
                 toggleAutoCapture(); // stop automatically at 100
                 return;
             }
-            // Schedule next capture 800ms after this one completes (server-friendly)
-            if (autoCaptureRunning) setTimeout(autoCaptureTick, 800);
+            // Schedule next capture 100ms after this one completes (request itself adds ~300ms)
+            if (autoCaptureRunning) setTimeout(autoCaptureTick, 100);
         }
 
         function toggleAutoCapture() {
