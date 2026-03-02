@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Attendance — Face Recognition Attendance</title>
+    <link rel="stylesheet" href="css/style.css" />
+    <style>
+        .filters-row {
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+            align-items: flex-end;
+        }
+
+        .filters-row .form-group {
+            margin: 0;
+            min-width: 160px;
+            flex: 1;
+        }
+
+        .action-bar {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+    </style>
+</head>
+
+<body>
+
+    <nav class="sidebar">
+        <div class="sidebar-brand">
+            <h2>🎓 FaceAttend</h2><span>Attendance System</span>
+        </div>
+        <ul class="sidebar-nav">
+            <li><a href="index.html"><span class="icon">📊</span> Dashboard</a></li>
+            <li><a href="students.html"><span class="icon">👥</span> Students</a></li>
+            <li><a href="recognition.html"><span class="icon">📷</span> Recognition</a></li>
+            <li><a href="attendance.html" class="active"><span class="icon">📋</span> Attendance</a></li>
+        </ul>
+        <div class="sidebar-footer">Face Recognition API v2</div>
+    </nav>
+
+    <main class="main">
+        <div class="page-header"
+            style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px">
+            <div>
+                <h1>Attendance Records</h1>
+                <p>View, filter, export, and manage attendance</p>
+            </div>
+            <div class="action-bar">
+                <button class="btn btn-success" onclick="downloadExcel()">⬇️ Excel</button>
+                <button class="btn btn-danger" onclick="downloadPdf()">📄 PDF</button>
+                <button class="btn btn-info" onclick="sendAllEmails()">📧 Email All</button>
+            </div>
+        </div>
+
+        <!-- Filters -->
+        <div class="card" style="margin-bottom:20px">
+            <div class="card-body" style="padding:20px 24px">
+                <div class="filters-row">
+                    <div class="form-group">
+                        <label>From Date</label>
+                        <input type="date" id="f-start" />
+                    </div>
+                    <div class="form-group">
+                        <label>To Date</label>
+                        <input type="date" id="f-end" />
+                    </div>
+                    <div class="form-group">
+                        <label>Department</label>
+                        <select id="f-dept">
+                            <option value="">All Departments</option>
+                            <option value="CS">Computer Science</option>
+                            <option value="CE">Civil Engineering</option>
+                            <option value="ME">Mechanical Engineering</option>
+                            <option value="EE">Electrical Engineering</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Semester</label>
+                        <select id="f-sem">
+                            <option value="">All Semesters</option>
+                            <option value="1">Sem 1</option>
+                            <option value="2">Sem 2</option>
+                            <option value="3">Sem 3</option>
+                            <option value="4">Sem 4</option>
+                            <option value="5">Sem 5</option>
+                            <option value="6">Sem 6</option>
+                            <option value="7">Sem 7</option>
+                            <option value="8">Sem 8</option>
+                        </select>
+                    </div>
+                    <div style="display:flex;gap:8px;align-items:flex-end">
+                        <button class="btn btn-primary" onclick="loadAttendance()">🔍 Filter</button>
+                        <button class="btn btn-ghost" onclick="clearFilters()">Clear</button>
+                    </div>
+                </div>
+                <p id="record-count" style="margin-top:12px;font-size:13px;color:var(--muted)"></p>
+            </div>
+        </div>
+
+        <!-- Table -->
+        <div class="card">
+            <div class="table-wrap">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>#</th>
+                            <th>Student</th>
+                            <th>Student ID</th>
+                            <th>Dept</th>
+                            <th>Date</th>
+                            <th>Time</th>
+                            <th>Confidence</th>
+                            <th>Status</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="att-body">
+                        <tr>
+                            <td colspan="9">
+                                <div class="spinner"></div>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </main>
+
+    <script src="js/api.js"></script>
+    <script>
+        function getFilters() {
+            return {
+                start_date: document.getElementById('f-start').value || undefined,
+                end_date: document.getElementById('f-end').value || undefined,
+                department: document.getElementById('f-dept').value || undefined,
+                semester: document.getElementById('f-sem').value || undefined,
+                limit: 500,
+            };
+        }
+
+        function clearFilters() {
+            ['f-start', 'f-end', 'f-dept', 'f-sem'].forEach(id => document.getElementById(id).value = '');
+            loadAttendance();
+        }
+
+        // Remove undefined keys
+        function cleanParams(obj) {
+            return Object.fromEntries(Object.entries(obj).filter(([, v]) => v !== undefined));
+        }
+
+        async function loadAttendance() {
+            document.getElementById('att-body').innerHTML = '<tr><td colspan="9"><div class="spinner"></div></td></tr>';
+            try {
+                const params = cleanParams(getFilters());
+                const records = await Attendance.list(params);
+                document.getElementById('record-count').textContent = `${records.length} record(s) found`;
+                const tbody = document.getElementById('att-body');
+                if (records.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="9"><div class="empty-state"><div class="icon">📋</div><p>No records match the filters</p></div></td></tr>';
+                    return;
+                }
+                tbody.innerHTML = records.map((r, i) => `
+        <tr>
+          <td style="color:var(--muted)">${i + 1}</td>
+          <td><strong>${r.student_name || '—'}</strong></td>
+          <td><span class="badge badge-blue">${r.student_uid || '—'}</span></td>
+          <td>${r.student_uid ? '—' : '—'}</td>
+          <td>${r.date}</td>
+          <td>${r.time ? r.time.slice(0, 5) : '—'}</td>
+          <td>
+            <span class="${r.confidence >= 70 ? 'badge badge-green' : 'badge badge-yellow'}">${r.confidence.toFixed(1)}%</span>
+          </td>
+          <td><span class="badge badge-green">${r.status_display || 'Present'}</span></td>
+          <td style="display:flex;gap:6px;flex-wrap:wrap">
+            <button class="btn btn-info btn-sm" onclick="sendEmail(${r.id})">📧</button>
+            <button class="btn btn-danger btn-sm" onclick="deleteRecord(${r.id})">🗑️</button>
+          </td>
+        </tr>
+      `).join('');
+            } catch (e) {
+                document.getElementById('att-body').innerHTML = `<tr><td colspan="9" style="text-align:center;color:var(--muted);padding:32px">Failed to load: ${e.detail || 'API error'}</td></tr>`;
+            }
+        }
+
+        async function deleteRecord(id) {
+            if (!confirm('Delete this attendance record?')) return;
+            try {
+                await Attendance.delete(id);
+                toast('Record deleted', 'success');
+                loadAttendance();
+            } catch (e) {
+                toast('Delete failed: ' + (e.detail || ''), 'error');
+            }
+        }
+
+        async function sendEmail(id) {
+            const btn = event.target;
+            btn.disabled = true; btn.textContent = '⏳';
+            try {
+                const r = await Attendance.sendEmail(id);
+                toast(r.message, r.success ? 'success' : 'error');
+            } catch (e) {
+                toast('Email failed: ' + (e.detail || ''), 'error');
+            } finally {
+                btn.disabled = false; btn.textContent = '📧';
+            }
+        }
+
+        async function sendAllEmails() {
+            if (!confirm('Send attendance emails to ALL students with records?')) return;
+            const btn = event.target;
+            btn.disabled = true; btn.textContent = '⏳ Sending…';
+            try {
+                const r = await Attendance.sendAllEmails();
+                toast(r.message, 'success');
+            } catch (e) {
+                toast('Failed: ' + (e.detail || ''), 'error');
+            } finally {
+                btn.disabled = false; btn.textContent = '📧 Email All';
+            }
+        }
+
+        function downloadExcel() {
+            const params = cleanParams(getFilters());
+            delete params.limit;
+            window.open(Attendance.excelUrl(params), '_blank');
+        }
+
+        function downloadPdf() {
+            const params = cleanParams(getFilters());
+            delete params.limit;
+            window.open(Attendance.pdfUrl(params), '_blank');
+        }
+
+        loadAttendance();
+    </script>
+</body>
+
+</html>

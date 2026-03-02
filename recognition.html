@@ -1,0 +1,480 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Recognition — Face Recognition Attendance</title>
+    <link rel="stylesheet" href="css/style.css" />
+    <style>
+        .tabs {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 24px;
+        }
+
+        .tab {
+            padding: 10px 22px;
+            border-radius: 8px;
+            border: 1px solid var(--border);
+            background: #fff;
+            font-family: inherit;
+            font-size: 14px;
+            font-weight: 500;
+            color: var(--muted);
+            cursor: pointer;
+            transition: var(--transition);
+        }
+
+        .tab.active {
+            background: var(--accent);
+            color: #fff;
+            border-color: var(--accent);
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        .counter-box {
+            background: linear-gradient(135deg, var(--accent), #818cf8);
+            color: #fff;
+            border-radius: var(--radius);
+            padding: 20px 24px;
+            text-align: center;
+            margin-bottom: 16px;
+        }
+
+        .counter-box .num {
+            font-size: 48px;
+            font-weight: 700;
+        }
+
+        .counter-box .lbl {
+            font-size: 14px;
+            opacity: .85;
+        }
+
+        .recognize-result {
+            margin-top: 24px;
+        }
+
+        .result-grid {
+            display: grid;
+            grid-template-columns: auto 1fr;
+            gap: 16px;
+            align-items: center;
+        }
+    </style>
+</head>
+
+<body>
+
+    <nav class="sidebar">
+        <div class="sidebar-brand">
+            <h2>🎓 FaceAttend</h2><span>Attendance System</span>
+        </div>
+        <ul class="sidebar-nav">
+            <li><a href="index.html"><span class="icon">📊</span> Dashboard</a></li>
+            <li><a href="students.html"><span class="icon">👥</span> Students</a></li>
+            <li><a href="recognition.html" class="active"><span class="icon">📷</span> Recognition</a></li>
+            <li><a href="attendance.html"><span class="icon">📋</span> Attendance</a></li>
+        </ul>
+        <div class="sidebar-footer">Face Recognition API v2</div>
+    </nav>
+
+    <main class="main">
+        <div class="page-header">
+            <h1>Face Recognition</h1>
+            <p>Capture training photos, train the model, and recognize faces</p>
+        </div>
+
+        <!-- Tabs -->
+        <div class="tabs">
+            <button class="tab active" onclick="switchTab('capture')">📸 Capture Photos</button>
+            <button class="tab" onclick="switchTab('train')" id="tab-train">🧠 Train Model</button>
+            <button class="tab" onclick="switchTab('recognize')" id="tab-recognize">🔍 Recognize Face</button>
+        </div>
+
+        <!-- ══ TAB: Capture ══ -->
+        <div class="tab-content active" id="tab-capture">
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:24px;align-items:start">
+
+                <div>
+                    <!-- Student selector -->
+                    <div class="card" style="margin-bottom:20px">
+                        <div class="card-header">
+                            <h3>Select Student</h3>
+                        </div>
+                        <div class="card-body">
+                            <div class="form-group">
+                                <label>Student ID</label>
+                                <input type="text" id="capture-student-id" placeholder="e.g. CS2401" />
+                            </div>
+                            <button class="btn btn-primary" onclick="startCamera()">📷 Open Camera</button>
+                            <button class="btn btn-ghost" style="margin-left:8px" onclick="stopCamera()">⏹ Stop</button>
+                        </div>
+                    </div>
+
+                    <!-- Counter -->
+                    <div class="counter-box">
+                        <div class="num" id="photo-count">0</div>
+                        <div class="lbl">Photos Captured / 100</div>
+                    </div>
+
+                    <!-- Progress -->
+                    <div class="progress-bar-wrap">
+                        <div class="progress-bar" id="capture-progress" style="width:0%"></div>
+                    </div>
+
+                    <p id="capture-status" style="font-size:13px;color:var(--muted);margin-top:8px">
+                        Enter a Student ID and open the camera to begin capturing.
+                    </p>
+
+                    <div style="margin-top:16px;display:flex;gap:10px;flex-wrap:wrap">
+                        <button class="btn btn-success" id="btn-auto-capture" onclick="toggleAutoCapture()" disabled>▶
+                            Start Auto Capture</button>
+                        <button class="btn btn-ghost" onclick="captureOne()" id="btn-capture-one" disabled>📸 Capture
+                            1</button>
+                    </div>
+                </div>
+
+                <!-- Webcam -->
+                <div>
+                    <div class="webcam-box" id="webcam-box"
+                        style="background:#0f172a;display:flex;align-items:center;justify-content:center">
+                        <span style="color:#475569;font-size:14px">Camera preview will appear here</span>
+                    </div>
+                    <canvas id="snapshot-canvas" style="display:none"></canvas>
+                    <p style="text-align:center;font-size:12px;color:var(--muted);margin-top:8px">
+                        Make sure your face is well-lit and centered
+                    </p>
+                </div>
+            </div>
+        </div>
+
+        <!-- ══ TAB: Train ══ -->
+        <div class="tab-content" id="tab-train">
+            <div style="max-width:560px;margin:0 auto">
+                <div class="card">
+                    <div class="card-header">
+                        <h3>Train Recognition Model</h3>
+                    </div>
+                    <div class="card-body">
+                        <p style="color:var(--muted);font-size:14px;margin-bottom:24px;line-height:1.7">
+                            Training uses all captured face photos to build the LBPH recognition model.<br />
+                            Minimum <strong>10 photos</strong> are required. For best results, capture <strong>100
+                                photos per student</strong>.
+                        </p>
+                        <div id="train-result" style="display:none;margin-bottom:20px"></div>
+                        <button class="btn btn-primary" id="btn-train-model" onclick="trainModel()"
+                            style="width:100%;justify-content:center;padding:14px">
+                            🧠 Start Training
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ══ TAB: Recognize ══ -->
+        <div class="tab-content" id="tab-recognize">
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:24px;align-items:start">
+
+                <div>
+                    <div class="card" style="margin-bottom:20px">
+                        <div class="card-header">
+                            <h3>Upload or Capture Image</h3>
+                        </div>
+                        <div class="card-body">
+                            <!-- Upload -->
+                            <div class="form-group">
+                                <label>Upload Image File</label>
+                                <input type="file" id="recognize-file" accept="image/*" onchange="previewFile()" />
+                            </div>
+                            <div style="text-align:center;color:var(--muted);margin:12px 0;font-size:13px">— OR use
+                                webcam —</div>
+                            <div style="display:flex;gap:8px">
+                                <button class="btn btn-ghost" onclick="startRecognizeCamera()">📷 Open Camera</button>
+                                <button class="btn btn-success" id="btn-snap" onclick="snapForRecognize()" disabled>📸
+                                    Snap &amp; Recognize</button>
+                                <button class="btn btn-ghost" onclick="stopRecognizeCamera()">⏹</button>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="webcam-box" id="recognize-webcam-box" style="display:none">
+                        <video id="recognize-video" autoplay playsinline muted></video>
+                        <div class="webcam-overlay"></div>
+                    </div>
+                    <canvas id="recognize-canvas" style="display:none"></canvas>
+                    <img id="recognize-preview"
+                        style="width:100%;border-radius:var(--radius);display:none;margin-top:12px" />
+                    <button class="btn btn-primary" id="btn-recognize" onclick="recognizeFace()"
+                        style="width:100%;justify-content:center;margin-top:16px;padding:14px">
+                        🔍 Recognize Face
+                    </button>
+                </div>
+
+                <!-- Result -->
+                <div>
+                    <div id="recognize-result" class="result-card">
+                        <div class="result-grid">
+                            <div id="conf-ring" class="confidence-ring" style="--pct:0">0%</div>
+                            <div>
+                                <div class="result-name" id="res-name">—</div>
+                                <div class="result-meta" id="res-dept">—</div>
+                                <div style="margin-top:8px" id="res-status"></div>
+                            </div>
+                        </div>
+                        <hr style="border-color:rgba(255,255,255,.1);margin:16px 0" />
+                        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;font-size:13px">
+                            <div>
+                                <div style="color:#94a3b8">Student ID</div>
+                                <div id="res-sid" style="font-weight:600;color:#fff">—</div>
+                            </div>
+                            <div>
+                                <div style="color:#94a3b8">Confidence</div>
+                                <div id="res-conf" style="font-weight:600;color:#fff">—</div>
+                            </div>
+                            <div>
+                                <div style="color:#94a3b8">Attendance</div>
+                                <div id="res-att" style="font-weight:600;color:#fff">—</div>
+                            </div>
+                            <div>
+                                <div style="color:#94a3b8">Time</div>
+                                <div id="res-time" style="font-weight:600;color:#fff">—</div>
+                            </div>
+                        </div>
+                    </div>
+                    <div id="recognize-placeholder" style="text-align:center;padding:60px 20px;color:var(--muted)">
+                        <div style="font-size:64px;margin-bottom:16px">🔍</div>
+                        <p>Recognize result will appear here</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script src="js/api.js"></script>
+    <script>
+        /* ── Tabs ── */
+        function switchTab(name) {
+            document.querySelectorAll('.tab,.tab-content').forEach(el => el.classList.remove('active'));
+            document.querySelector(`[onclick="switchTab('${name}')"]`).classList.add('active');
+            document.getElementById('tab-' + name).classList.add('active');
+        }
+
+        // Handle URL hash for direct link
+        if (location.hash === '#recognize') switchTab('recognize');
+
+        /* ══ CAPTURE ══ */
+        let captureStream = null, autoCaptureInterval = null, capCount = 0, autoCaptureRunning = false;
+        const captureVideo = document.createElement('video');
+        captureVideo.autoplay = true; captureVideo.playsInline = true; captureVideo.muted = true;
+
+        async function startCamera() {
+            const sid = document.getElementById('capture-student-id').value.trim();
+            if (!sid) { toast('Enter a Student ID first', 'error'); return; }
+
+            const box = document.getElementById('webcam-box');
+            box.innerHTML = '';
+            captureVideo.style.cssText = 'width:100%;height:100%;object-fit:cover';
+            box.appendChild(captureVideo);
+
+            try {
+                captureStream = await navigator.mediaDevices.getUserMedia({ video: true });
+                captureVideo.srcObject = captureStream;
+                document.getElementById('btn-auto-capture').disabled = false;
+                document.getElementById('btn-capture-one').disabled = false;
+                document.getElementById('capture-status').textContent = 'Camera ready. Start capturing photos.';
+            } catch (e) {
+                toast('Camera access denied. Please allow camera permission.', 'error');
+            }
+        }
+
+        function stopCamera() {
+            if (autoCaptureRunning) toggleAutoCapture();
+            if (captureStream) { captureStream.getTracks().forEach(t => t.stop()); captureStream = null; }
+            const box = document.getElementById('webcam-box');
+            box.innerHTML = '<span style="color:#475569;font-size:14px">Camera stopped</span>';
+            document.getElementById('btn-auto-capture').disabled = true;
+            document.getElementById('btn-capture-one').disabled = true;
+        }
+
+        function getFrame() {
+            const canvas = document.getElementById('snapshot-canvas');
+            canvas.width = captureVideo.videoWidth || 640;
+            canvas.height = captureVideo.videoHeight || 480;
+            canvas.getContext('2d').drawImage(captureVideo, 0, 0);
+            return canvas.toDataURL('image/jpeg', 0.8);
+        }
+
+        async function captureOne() {
+            const sid = document.getElementById('capture-student-id').value.trim();
+            if (!captureStream || !sid) return;
+            const image = getFrame();
+            try {
+                const r = await Recognition.savePhoto(sid, image);
+                if (r.success) {
+                    capCount = r.count;
+                    const pct = Math.min(capCount / 100 * 100, 100);
+                    document.getElementById('photo-count').textContent = capCount;
+                    document.getElementById('capture-progress').style.width = pct + '%';
+                    document.getElementById('capture-status').textContent = r.message;
+                    if (r.should_train) toast('100 photos collected! You can now train the model.', 'info');
+                } else {
+                    document.getElementById('capture-status').textContent = r.error;
+                }
+            } catch (e) {
+                toast('Save failed: ' + (e.detail || ''), 'error');
+            }
+        }
+
+        function toggleAutoCapture() {
+            const btn = document.getElementById('btn-auto-capture');
+            if (!autoCaptureRunning) {
+                autoCaptureRunning = true;
+                btn.textContent = '⏸ Stop Auto Capture';
+                btn.classList.replace('btn-success', 'btn-warning');
+                autoCaptureInterval = setInterval(async () => {
+                    await captureOne();
+                    if (capCount >= 100) toggleAutoCapture();
+                }, 400);
+            } else {
+                autoCaptureRunning = false;
+                clearInterval(autoCaptureInterval);
+                btn.textContent = '▶ Start Auto Capture';
+                btn.classList.replace('btn-warning', 'btn-success');
+            }
+        }
+
+        /* ══ TRAIN ══ */
+        async function trainModel() {
+            const btn = document.getElementById('btn-train-model');
+            btn.disabled = true; btn.textContent = '⏳ Training… please wait';
+            try {
+                const r = await Recognition.train();
+                const div = document.getElementById('train-result');
+                div.style.display = 'block';
+                if (r.success) {
+                    div.innerHTML = `<div class="card" style="border-top:4px solid var(--success)">
+          <div class="card-body">
+            <p style="font-weight:600;color:var(--success);margin-bottom:12px">✅ Training Complete!</p>
+            <p>Images: <strong>${r.num_images}</strong> | Students: <strong>${r.num_students}</strong> | Accuracy: <strong>${r.accuracy}%</strong></p>
+          </div></div>`;
+                    toast('Model trained successfully!', 'success');
+                } else {
+                    div.innerHTML = `<div class="card" style="border-top:4px solid var(--danger)"><div class="card-body"><p style="color:var(--danger)">❌ ${r.error}</p></div></div>`;
+                    toast('Training failed', 'error');
+                }
+            } catch (e) {
+                toast('Error: ' + (e.detail || ''), 'error');
+            } finally {
+                btn.disabled = false; btn.textContent = '🧠 Start Training';
+            }
+        }
+
+        /* ══ RECOGNIZE ══ */
+        let recognizeStream = null;
+        const recVideo = document.getElementById('recognize-video');
+
+        function previewFile() {
+            const file = document.getElementById('recognize-file').files[0];
+            if (!file) return;
+            const img = document.getElementById('recognize-preview');
+            img.src = URL.createObjectURL(file);
+            img.style.display = 'block';
+        }
+
+        async function startRecognizeCamera() {
+            const box = document.getElementById('recognize-webcam-box');
+            box.style.display = 'block';
+            try {
+                recognizeStream = await navigator.mediaDevices.getUserMedia({ video: true });
+                recVideo.srcObject = recognizeStream;
+                document.getElementById('btn-snap').disabled = false;
+            } catch (e) { toast('Camera access denied', 'error'); }
+        }
+
+        function snapForRecognize() {
+            const canvas = document.getElementById('recognize-canvas');
+            canvas.width = recVideo.videoWidth || 640;
+            canvas.height = recVideo.videoHeight || 480;
+            canvas.getContext('2d').drawImage(recVideo, 0, 0);
+            canvas.toBlob(blob => {
+                const file = new File([blob], 'snapshot.jpg', { type: 'image/jpeg' });
+                const dt = new DataTransfer();
+                dt.items.add(file);
+                document.getElementById('recognize-file').files = dt.files;
+                const img = document.getElementById('recognize-preview');
+                img.src = URL.createObjectURL(blob);
+                img.style.display = 'block';
+            }, 'image/jpeg', 0.9);
+        }
+
+        function stopRecognizeCamera() {
+            if (recognizeStream) { recognizeStream.getTracks().forEach(t => t.stop()); recognizeStream = null; }
+            document.getElementById('recognize-webcam-box').style.display = 'none';
+            document.getElementById('btn-snap').disabled = true;
+        }
+
+        async function recognizeFace() {
+            const fileInput = document.getElementById('recognize-file');
+            if (!fileInput.files.length) { toast('Please upload or capture an image first', 'error'); return; }
+
+            const btn = document.getElementById('btn-recognize');
+            btn.disabled = true; btn.textContent = '⏳ Recognizing…';
+
+            try {
+                const fd = new FormData();
+                fd.append('file', fileInput.files[0]);
+                const r = await Recognition.recognize(fd);
+
+                document.getElementById('recognize-placeholder').style.display = 'none';
+                const card = document.getElementById('recognize-result');
+                card.classList.add('show');
+
+                if (r.success && r.recognized) {
+                    const pct = Math.round(r.confidence);
+                    document.getElementById('res-name').textContent = r.student_name;
+                    document.getElementById('res-dept').textContent = r.department;
+                    document.getElementById('res-sid').textContent = r.student_id;
+                    document.getElementById('res-conf').textContent = pct + '%';
+                    document.getElementById('conf-ring').style.setProperty('--pct', pct);
+                    document.getElementById('conf-ring').textContent = pct + '%';
+
+                    if (r.attendance_marked) {
+                        document.getElementById('res-att').textContent = '✅ Marked Present';
+                        document.getElementById('res-time').textContent = new Date().toLocaleTimeString();
+                        document.getElementById('res-status').innerHTML = '<span class="badge badge-green">🎉 Attendance Marked!</span>';
+                        toast(`Attendance marked for ${r.student_name}`, 'success');
+                    } else if (r.already_marked) {
+                        document.getElementById('res-att').textContent = '⚠️ Already Marked';
+                        document.getElementById('res-time').textContent = r.marked_at || '—';
+                        document.getElementById('res-status').innerHTML = '<span class="badge badge-yellow">Already marked today</span>';
+                        toast(`Already marked today: ${r.student_name}`, 'info');
+                    }
+                } else {
+                    document.getElementById('res-name').textContent = 'Unknown';
+                    document.getElementById('res-dept').textContent = r.message || 'Face not recognized';
+                    document.getElementById('res-sid').textContent = '—';
+                    document.getElementById('res-conf').textContent = (r.confidence || 0).toFixed(1) + '%';
+                    document.getElementById('conf-ring').textContent = '—';
+                    document.getElementById('res-att').textContent = '—';
+                    document.getElementById('res-time').textContent = '—';
+                    document.getElementById('res-status').innerHTML = '<span class="badge badge-red">Not Recognized</span>';
+                    toast(r.message || r.error || 'Could not recognize face', 'error');
+                }
+            } catch (e) {
+                toast('Error: ' + (e.detail || ''), 'error');
+            } finally {
+                btn.disabled = false; btn.textContent = '🔍 Recognize Face';
+            }
+        }
+    </script>
+</body>
+
+</html>

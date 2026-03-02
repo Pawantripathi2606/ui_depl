@@ -1,0 +1,10 @@
+{
+  "version": 2,
+  "routes": [
+    { "src": "/", "dest": "/index.html" },
+    { "src": "/students", "dest": "/students.html" },
+    { "src": "/recognition", "dest": "/recognition.html" },
+    { "src": "/attendance", "dest": "/attendance.html" },
+    { "src": "/(.*)", "dest": "/$1" }
+  ]
+}

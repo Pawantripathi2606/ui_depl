@@ -1,0 +1,334 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Students — Face Recognition Attendance</title>
+    <link rel="stylesheet" href="css/style.css" />
+</head>
+
+<body>
+
+    <!-- Sidebar -->
+    <nav class="sidebar">
+        <div class="sidebar-brand">
+            <h2>🎓 FaceAttend</h2>
+            <span>Attendance System</span>
+        </div>
+        <ul class="sidebar-nav">
+            <li><a href="index.html"><span class="icon">📊</span> Dashboard</a></li>
+            <li><a href="students.html" class="active"><span class="icon">👥</span> Students</a></li>
+            <li><a href="recognition.html"><span class="icon">📷</span> Recognition</a></li>
+            <li><a href="attendance.html"><span class="icon">📋</span> Attendance</a></li>
+        </ul>
+        <div class="sidebar-footer">Face Recognition API v2</div>
+    </nav>
+
+    <!-- Main -->
+    <main class="main">
+        <div class="page-header"
+            style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px">
+            <div>
+                <h1>Students</h1>
+                <p>Manage all registered students</p>
+            </div>
+            <button class="btn btn-primary" onclick="openAddModal()">➕ Add Student</button>
+        </div>
+
+        <!-- Search -->
+        <div class="card" style="margin-bottom:20px">
+            <div class="card-body" style="padding:16px 24px">
+                <div class="toolbar">
+                    <div class="search-box">
+                        <span>🔍</span>
+                        <input type="text" id="search-input" placeholder="Search by name, ID, email, phone…" />
+                    </div>
+                    <button class="btn btn-ghost" id="btn-search">Search</button>
+                    <button class="btn btn-ghost" id="btn-clear">Clear</button>
+                    <span id="count-label" style="font-size:13px;color:var(--muted)"></span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Table -->
+        <div class="card">
+            <div class="table-wrap">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Student ID</th>
+                            <th>Name</th>
+                            <th>Dept</th>
+                            <th>Semester</th>
+                            <th>Email</th>
+                            <th>Phone</th>
+                            <th>Photos</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="students-body">
+                        <tr>
+                            <td colspan="8">
+                                <div class="spinner"></div>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </main>
+
+    <!-- Add/Edit Modal -->
+    <div class="modal-overlay" id="student-modal">
+        <div class="modal">
+            <h2 id="modal-title">Add Student</h2>
+            <input type="hidden" id="edit-id" />
+
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Student ID *</label>
+                    <input type="text" id="f-student_id" placeholder="e.g. CS2401" />
+                </div>
+                <div class="form-group">
+                    <label>Full Name *</label>
+                    <input type="text" id="f-name" placeholder="Full name" />
+                </div>
+            </div>
+
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Department *</label>
+                    <select id="f-department">
+                        <option value="">Select…</option>
+                        <option value="CS">Computer Science</option>
+                        <option value="CE">Civil Engineering</option>
+                        <option value="ME">Mechanical Engineering</option>
+                        <option value="EE">Electrical Engineering</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Course *</label>
+                    <select id="f-course">
+                        <option value="">Select…</option>
+                        <option value="CS_GENERAL">Computer Science</option>
+                        <option value="CS_AI_ML">CSE - AI/ML</option>
+                        <option value="CS_IOT">CSE - IOT</option>
+                        <option value="CS_AIDS">CSE - AIDS</option>
+                        <option value="CS_DS">CSE - DS</option>
+                        <option value="CE_CONSTRUCTION">Construction Engineering</option>
+                        <option value="CE_STRUCTURAL">Structural Engineering</option>
+                        <option value="ME">Mechanical Engineering</option>
+                        <option value="EE">Electrical Engineering</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Year *</label>
+                    <select id="f-year">
+                        <option value="">Select…</option>
+                        <option>2023-24</option>
+                        <option>2024-25</option>
+                        <option>2025-26</option>
+                        <option>2026-27</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Semester *</label>
+                    <select id="f-semester">
+                        <option value="">Select…</option>
+                        <option value="1">Sem 1</option>
+                        <option value="2">Sem 2</option>
+                        <option value="3">Sem 3</option>
+                        <option value="4">Sem 4</option>
+                        <option value="5">Sem 5</option>
+                        <option value="6">Sem 6</option>
+                        <option value="7">Sem 7</option>
+                        <option value="8">Sem 8</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Division *</label>
+                    <select id="f-division">
+                        <option value="">Select…</option>
+                        <option>A</option>
+                        <option>B</option>
+                        <option>C</option>
+                        <option>D</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Roll No</label>
+                    <input type="text" id="f-roll_no" placeholder="Optional" />
+                </div>
+            </div>
+
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Gender *</label>
+                    <select id="f-gender">
+                        <option value="">Select…</option>
+                        <option value="M">Male</option>
+                        <option value="F">Female</option>
+                        <option value="O">Other</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Date of Birth *</label>
+                    <input type="date" id="f-dob" />
+                </div>
+            </div>
+
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Email *</label>
+                    <input type="email" id="f-email" placeholder="student@email.com" />
+                </div>
+                <div class="form-group">
+                    <label>Phone *</label>
+                    <input type="tel" id="f-phone" placeholder="10-digit number" maxlength="10" />
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label>Address *</label>
+                <textarea id="f-address" rows="2" placeholder="Full address"></textarea>
+            </div>
+
+            <div class="form-group">
+                <label>Teacher Name *</label>
+                <input type="text" id="f-teacher" placeholder="Assigned teacher" />
+            </div>
+
+            <div class="modal-actions">
+                <button class="btn btn-ghost" onclick="closeModal('student-modal')">Cancel</button>
+                <button class="btn btn-primary" id="btn-save-student" onclick="saveStudent()">Save Student</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="js/api.js"></script>
+    <script>
+        let allStudents = [];
+
+        const fields = ['student_id', 'name', 'department', 'course', 'year', 'semester', 'division', 'roll_no', 'gender', 'dob', 'email', 'phone', 'address', 'teacher'];
+
+        async function loadStudents(search = '') {
+            document.getElementById('students-body').innerHTML = '<tr><td colspan="8"><div class="spinner"></div></td></tr>';
+            try {
+                allStudents = await Students.list(search);
+                renderTable(allStudents);
+            } catch (e) {
+                document.getElementById('students-body').innerHTML =
+                    `<tr><td colspan="8" style="text-align:center;color:var(--muted);padding:32px">Failed to load: ${e.detail || 'API error'}</td></tr>`;
+            }
+        }
+
+        function renderTable(list) {
+            document.getElementById('count-label').textContent = `${list.length} student(s)`;
+            const tbody = document.getElementById('students-body');
+            if (list.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="8"><div class="empty-state"><div class="icon">👥</div><p>No students found</p></div></td></tr>';
+                return;
+            }
+            tbody.innerHTML = list.map(s => `
+      <tr>
+        <td><strong>${s.student_id}</strong></td>
+        <td>${s.name}</td>
+        <td><span class="badge badge-blue">${s.department_display || s.department}</span></td>
+        <td>Sem ${s.semester}</td>
+        <td>${s.email}</td>
+        <td>${s.phone}</td>
+        <td>${s.photo_samples_taken
+                    ? '<span class="badge badge-green">✅ Done</span>'
+                    : '<span class="badge badge-yellow">⏳ Pending</span>'}</td>
+        <td style="display:flex;gap:6px;flex-wrap:wrap">
+          <button class="btn btn-ghost btn-sm" onclick="editStudent(${s.id})">✏️ Edit</button>
+          <button class="btn btn-danger btn-sm" onclick="deleteStudent(${s.id},'${s.name}')">🗑️</button>
+          <a class="btn btn-info btn-sm" href="recognition.html?student_id=${s.student_id}">📷 Capture</a>
+        </td>
+      </tr>
+    `).join('');
+        }
+
+        function openAddModal() {
+            document.getElementById('modal-title').textContent = 'Add Student';
+            document.getElementById('edit-id').value = '';
+            fields.forEach(f => {
+                const el = document.getElementById('f-' + f);
+                if (el) el.value = '';
+            });
+            openModal('student-modal');
+        }
+
+        async function editStudent(id) {
+            try {
+                const s = await Students.get(id);
+                document.getElementById('modal-title').textContent = 'Edit Student';
+                document.getElementById('edit-id').value = id;
+                fields.forEach(f => {
+                    const el = document.getElementById('f-' + f);
+                    if (el) el.value = s[f] || '';
+                });
+                openModal('student-modal');
+            } catch (e) {
+                toast('Failed to load student: ' + (e.detail || ''), 'error');
+            }
+        }
+
+        async function saveStudent() {
+            const id = document.getElementById('edit-id').value;
+            const data = {};
+            fields.forEach(f => {
+                const el = document.getElementById('f-' + f);
+                if (el && el.value) data[f] = el.value;
+            });
+
+            const required = ['student_id', 'name', 'department', 'course', 'year', 'semester', 'division', 'gender', 'dob', 'email', 'phone', 'address', 'teacher'];
+            const missing = required.filter(f => !data[f]);
+            if (missing.length) { toast('Please fill: ' + missing.join(', '), 'error'); return; }
+
+            const btn = document.getElementById('btn-save-student');
+            btn.disabled = true; btn.textContent = 'Saving…';
+            try {
+                if (id) {
+                    await Students.update(id, data);
+                    toast('Student updated!', 'success');
+                } else {
+                    await Students.create(data);
+                    toast('Student added!', 'success');
+                }
+                closeModal('student-modal');
+                loadStudents();
+            } catch (e) {
+                toast('Error: ' + (e.detail || JSON.stringify(e)), 'error');
+            } finally {
+                btn.disabled = false; btn.textContent = 'Save Student';
+            }
+        }
+
+        async function deleteStudent(id, name) {
+            if (!confirm(`Delete student "${name}"? This also removes their attendance records.`)) return;
+            try {
+                await Students.delete(id);
+                toast(`"${name}" deleted`, 'success');
+                loadStudents();
+            } catch (e) {
+                toast('Delete failed: ' + (e.detail || ''), 'error');
+            }
+        }
+
+        document.getElementById('btn-search').onclick = () => loadStudents(document.getElementById('search-input').value);
+        document.getElementById('btn-clear').onclick = () => { document.getElementById('search-input').value = ''; loadStudents(); };
+        document.getElementById('search-input').addEventListener('keydown', e => { if (e.key === 'Enter') loadStudents(e.target.value); });
+
+        loadStudents();
+    </script>
+</body>
+
+</html>
