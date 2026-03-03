@@ -285,7 +285,9 @@
             box.appendChild(captureVideo);
 
             try {
-                captureStream = await navigator.mediaDevices.getUserMedia({ video: true });
+                captureStream = await navigator.mediaDevices.getUserMedia({
+                    video: { width: { ideal: 320 }, height: { ideal: 240 }, facingMode: 'user' }
+                });
                 captureVideo.srcObject = captureStream;
                 document.getElementById('btn-auto-capture').disabled = false;
                 document.getElementById('btn-capture-one').disabled = false;
@@ -306,10 +308,11 @@
 
         function getFrame() {
             const canvas = document.getElementById('snapshot-canvas');
-            canvas.width = captureVideo.videoWidth || 640;
-            canvas.height = captureVideo.videoHeight || 480;
-            canvas.getContext('2d').drawImage(captureVideo, 0, 0);
-            return canvas.toDataURL('image/jpeg', 0.8);
+            // Capture at 320x240 — 4x smaller payload, still sufficient for LBPH training
+            canvas.width = 320;
+            canvas.height = 240;
+            canvas.getContext('2d').drawImage(captureVideo, 0, 0, 320, 240);
+            return canvas.toDataURL('image/jpeg', 0.6); // 0.6 quality — smaller, fast enough
         }
 
         async function captureOne() {
@@ -335,16 +338,34 @@
             }
         }
 
-        // ── Recursive auto-capture: waits for each request before scheduling next ──
+        // ── Parallel auto-capture: fires 3 requests simultaneously for ~3x speed ──
         async function autoCaptureTick() {
-            if (!autoCaptureRunning) return; // stopped
-            await captureOne();
-            if (capCount >= 100) {
-                toggleAutoCapture(); // stop automatically at 100
-                return;
+            if (!autoCaptureRunning) return;
+
+            const sid = document.getElementById('capture-student-id').value.trim();
+            if (!captureStream || !sid) return;
+
+            // Fire 3 captures in parallel, wait for all to settle
+            const batch = [getFrame(), getFrame(), getFrame()];
+            const results = await Promise.allSettled(
+                batch.map(img => Recognition.savePhoto(sid, img))
+            );
+
+            // Process results — use the last successful one for the counter
+            for (const res of results) {
+                if (res.status === 'fulfilled' && res.value.success) {
+                    capCount = res.value.count;
+                    const pct = Math.min(capCount / 100 * 100, 100);
+                    document.getElementById('photo-count').textContent = capCount;
+                    document.getElementById('capture-progress').style.width = pct + '%';
+                    document.getElementById('capture-status').textContent = res.value.message;
+                    if (res.value.should_train) toast('100 photos collected! You can now train the model.', 'info');
+                }
             }
-            // Schedule next capture 100ms after this one completes (request itself adds ~300ms)
-            if (autoCaptureRunning) setTimeout(autoCaptureTick, 100);
+
+            if (capCount >= 100) { toggleAutoCapture(); return; }
+            // No delay needed — parallelism already maximises throughput
+            if (autoCaptureRunning) setTimeout(autoCaptureTick, 0);
         }
 
         function toggleAutoCapture() {
