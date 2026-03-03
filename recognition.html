@@ -285,7 +285,7 @@
 
             try {
                 captureStream = await navigator.mediaDevices.getUserMedia({
-                    video: { width: { ideal: 320 }, height: { ideal: 240 }, facingMode: 'user' }
+                    video: { width: { ideal: 640 }, height: { ideal: 480 }, facingMode: 'user' }
                 });
                 captureVideo.srcObject = captureStream;
                 document.getElementById('btn-auto-capture').disabled = false;
@@ -307,11 +307,11 @@
 
         function getFrame() {
             const canvas = document.getElementById('snapshot-canvas');
-            // Capture at 320x240 — 4x smaller payload, still sufficient for LBPH training
-            canvas.width = 320;
-            canvas.height = 240;
-            canvas.getContext('2d').drawImage(captureVideo, 0, 0, 320, 240);
-            return canvas.toDataURL('image/jpeg', 0.6); // 0.6 quality — smaller, fast enough
+            // 480x360 — good balance of face detection quality vs network size
+            canvas.width = 480;
+            canvas.height = 360;
+            canvas.getContext('2d').drawImage(captureVideo, 0, 0, 480, 360);
+            return canvas.toDataURL('image/jpeg', 0.85);
         }
 
         async function captureOne() {
