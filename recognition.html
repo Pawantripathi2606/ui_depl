@@ -263,10 +263,16 @@
         if (location.hash === '#recognize') switchTab('recognize');
 
         /* ══ CAPTURE ══ */
-        // autoCaptureRunning controls the recursive setTimeout loop
         let captureStream = null, capCount = 0, autoCaptureRunning = false;
+        let consecutiveErrors = 0; // Track consecutive face-not-detected errors
         const captureVideo = document.createElement('video');
         captureVideo.autoplay = true; captureVideo.playsInline = true; captureVideo.muted = true;
+
+        // Prefill student ID from URL query param (when clicking Capture from students page)
+        const urlStudentId = new URLSearchParams(location.search).get('student_id');
+        if (urlStudentId) {
+            document.getElementById('capture-student-id').value = urlStudentId;
+        }
 
         async function startCamera() {
             const sid = document.getElementById('capture-student-id').value.trim();
@@ -344,20 +350,43 @@
                 batch.map(img => Recognition.savePhoto(sid, img))
             );
 
-            // Process results — use the last successful one for the counter
+            let anySuccess = false;
+            let lastError = '';
+
             for (const res of results) {
                 if (res.status === 'fulfilled' && res.value.success) {
+                    anySuccess = true;
+                    consecutiveErrors = 0;
                     capCount = res.value.count;
                     const pct = Math.min(capCount / 100 * 100, 100);
                     document.getElementById('photo-count').textContent = capCount;
                     document.getElementById('capture-progress').style.width = pct + '%';
-                    document.getElementById('capture-status').textContent = res.value.message;
-                    if (res.value.should_train) toast('100 photos collected! You can now train the model.', 'info');
+                    document.getElementById('capture-status').textContent = `Photo ${capCount} saved.`;
+                    document.getElementById('capture-status').style.color = 'var(--success, green)';
+                    if (res.value.should_train) toast('100 photos collected! Go to Train Model tab.', 'info');
+                } else {
+                    // Collect error message
+                    const err = (res.status === 'fulfilled' ? res.value.error : (res.reason?.error || res.reason?.detail || 'Network error'));
+                    lastError = err || 'Unknown error';
+                }
+            }
+
+            if (!anySuccess) {
+                consecutiveErrors += 3;
+                const statusEl = document.getElementById('capture-status');
+                statusEl.style.color = 'var(--danger, red)';
+                // Show helpful message based on error type
+                if (lastError.includes('not found')) {
+                    statusEl.textContent = `Student '${sid}' not found. Check the ID matches your registered student.`;
+                    toggleAutoCapture(); // Stop — wrong student ID
+                } else if (lastError.includes('face') || lastError.includes('Face')) {
+                    statusEl.textContent = `No face detected (${consecutiveErrors} frames missed). Adjust lighting or move closer.`;
+                } else {
+                    statusEl.textContent = `Error: ${lastError}`;
                 }
             }
 
             if (capCount >= 100) { toggleAutoCapture(); return; }
-            // No delay needed — parallelism already maximises throughput
             if (autoCaptureRunning) setTimeout(autoCaptureTick, 0);
         }
 
